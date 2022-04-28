@@ -1,9 +1,10 @@
-const service = require("../service/index");
+// const service = require("../service/index");
 const Joi = require("joi");
+const Contact = require("../../service/schemas/contacts");
 
 const get = async (req, res, next) => {
   try {
-    const result = await service.getAll();
+    const result = await Contact.find();
     res.status(200).json({ message: "success", result });
   } catch (error) {
     console.log(error);
@@ -13,7 +14,7 @@ const get = async (req, res, next) => {
 const getById = async (req, res, next) => {
   try {
     const { contactId } = req.params;
-    const result = await service.getContactById(contactId);
+    const result = await Contact.findById(contactId);
     if (!result) {
       res.status(404).json({ message: "Not found" });
     }
@@ -41,7 +42,7 @@ const createContact = async (req, res, next) => {
       return;
     }
     const newContact = req.body;
-    const result = await service.createNewContact(newContact);
+    const result = await Contact.create(newContact);
     if (!result) {
       res.status(404).json({ message: "bad request" });
     }
@@ -56,7 +57,7 @@ const createContact = async (req, res, next) => {
 const deleteContact = async (req, res, next) => {
   try {
     const { contactId } = req.params;
-    const result = await service.removeContactById(contactId);
+    const result = await Contact.findByIdAndDelete(contactId);
 
     if (!result) {
       res.status(404).json({ message: "Not found" });
@@ -93,7 +94,9 @@ const updateContact = async (req, res, next) => {
       res.status(400).json({ message: "missing fields" });
     }
 
-    const result = await service.updateContact(contactId, body);
+    const result = await Contact.findByIdAndUpdate(contactId, body, {
+      new: true,
+    });
 
     if (!result) {
       res.status(404).json({ message: "Not found" });
@@ -125,7 +128,11 @@ const updateFavorite = async (req, res, next) => {
       res.status(400).json({ message: "missing fields" });
     }
 
-    const result = await service.updateFavorite(contactId, { favorite });
+    const result = await Contact.findByIdAndUpdate(
+      contactId,
+      { favorite },
+      { new: true }
+    );
 
     if (!result) {
       res.status(404).json({ message: "Not found" });
