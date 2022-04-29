@@ -1,7 +1,5 @@
-// const service = require("../service/index");
-const Joi = require("joi");
-const Contact = require("../../service/schemas/contacts");
-
+const { Contact, schemas } = require("../../service/schemas/contacts");
+const CreateError = require("http-errors");
 const get = async (req, res, next) => {
   try {
     const result = await Contact.find();
@@ -27,20 +25,11 @@ const getById = async (req, res, next) => {
 
 const createContact = async (req, res, next) => {
   try {
-    const schema = Joi.object({
-      name: Joi.string().alphanum().min(3).max(15).required(),
-      email: Joi.string().email({
-        minDomainSegments: 2,
-        tlds: { allow: ["com", "net"] },
-      }),
-      phone: Joi.string().min(3).max(15).required(),
-    });
-
-    const validateResult = schema.validate(req.body);
-    if (validateResult.error) {
-      res.status(400).json({ message: validateResult.error.details });
-      return;
+    const { error } = schemas.changeContactsJoiSchema.validate(req.body);
+    if (error) {
+      throw new CreateError(400, error.message);
     }
+
     const newContact = req.body;
     const result = await Contact.create(newContact);
     if (!result) {
@@ -75,19 +64,9 @@ const updateContact = async (req, res, next) => {
     const { contactId } = req.params;
     const { body } = req;
 
-    const schema = Joi.object({
-      name: Joi.string().alphanum().min(3).max(15).required(),
-      email: Joi.string().email({
-        minDomainSegments: 2,
-        tlds: { allow: ["com", "net"] },
-      }),
-      phone: Joi.string().min(3).max(15).required(),
-    });
-
-    const validateResult = schema.validate(req.body);
-    if (validateResult.error) {
-      res.status(400).json({ message: validateResult.error.details });
-      return;
+    const { error } = schemas.changeContactsJoiSchema.validate(req.body);
+    if (error) {
+      throw new CreateError(400, error.message);
     }
 
     if (!body) {
@@ -114,14 +93,9 @@ const updateFavorite = async (req, res, next) => {
     const { contactId } = req.params;
     const { favorite } = req.body;
 
-    const schema = Joi.object({
-      favorite: Boolean,
-    });
-
-    const validateResult = schema.validate(req.body);
-    if (validateResult.error) {
-      res.status(400).json({ message: validateResult.error.details });
-      return;
+    const { error } = schemas.changeValidateJoiSchema.validate(req.body);
+    if (error) {
+      throw new CreateError(400, error.message);
     }
 
     if (!req.body) {
