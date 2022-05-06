@@ -1,7 +1,7 @@
 const bcrypt = require("bcryptjs");
-const CreateError = require("http-errors");
 const jwt = require("jsonwebtoken");
 
+const createError = require("../../helpers");
 const { User, schemas } = require("../../service/schemas/users");
 const { SECRET } = process.env;
 
@@ -10,13 +10,13 @@ const signup = async (req, res, next) => {
     const { password, email } = req.body;
     const findEmail = await User.findOne({ email });
 
-    const { error } = schemas.validate(req.body);
+    const { error } = schemas.registerJoiSchema.validate(req.body);
     if (error) {
-      throw new CreateError(400, error.message);
+      throw createError(400, error.message);
     }
 
     if (findEmail) {
-      throw new CreateError(409, "Email in use");
+      throw createError(409, "Email in use");
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -26,7 +26,6 @@ const signup = async (req, res, next) => {
     res.status(201).json({
       user: {
         email,
-        subscription: "starter",
       },
     });
   } catch (error) {
@@ -36,27 +35,27 @@ const signup = async (req, res, next) => {
 
 const signin = async (req, res, next) => {
   const { email, password } = req.body;
-  const { error } = schemas.validate(req.body);
+  const { error } = schemas.registerJoiSchema.validate(req.body);
   if (error) {
-    throw new CreateError(400, error.message);
+    throw createError(400, error.message);
   }
 
   try {
     const user = await User.findOne({ email });
     if (!user) {
-      throw new CreateError(401, "Email or password is wrong");
+      throw createError(401, "Email or password is wrong");
     }
-
     const comparePassword = await bcrypt.compare(password, user.password);
     if (!comparePassword) {
-      throw new CreateError(401, "Email or password is wrong");
+      throw createError(401, "Email or password is wrong");
     }
 
     const payload = {
       id: user.id,
     };
-
     const token = jwt.sign(payload, SECRET, { expiresIn: "1h" });
+
+    await User.findByIdAndUpdate(user._id, { token });
 
     res.status(200).json({
       token: token,
@@ -67,4 +66,59 @@ const signin = async (req, res, next) => {
   }
 };
 
-module.exports = { signup, signin };
+const current = async (req, res) => {
+  const { email } = req.user;
+  res.json({
+    email,
+  });
+};
+
+const logout = async (req, res, next) => {
+  try {
+    const { _id } = req.user;
+    await User.findByIdAndUpdate(_id, { token: null });
+
+    if (!_id) {
+      throw createError(401);
+    }
+
+    res.status(204).json({ message: "success" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const changeSubscription = async (req, res, next) => {
+  try {
+    const { _id: owner } = req.user;
+    const { userId } = req.params;
+    const { subscription } = req.body;
+
+    const { error } = schemas.subscriptionJoiSchema.validate({ subscription });
+
+    if (error) {
+      throw createError(400, error.message);
+    }
+
+    if (!req.body) {
+      throw createError(400, "missing fields");
+    }
+
+    const result = await User.findOneAndUpdate(
+      { _id: userId, owner },
+      { subscription },
+      {
+        new: true,
+      }
+    );
+    if (!result) {
+      throw createError(404);
+    }
+
+    res.status(200).json({ message: "success", result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { signup, signin, current, logout, changeSubscription };
