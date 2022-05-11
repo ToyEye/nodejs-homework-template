@@ -3,23 +3,17 @@ const jwt = require("jsonwebtoken");
 const gravatar = require("gravatar");
 const fs = require("fs/promises");
 const path = require("path");
-const Jimp = require("jimp");
 
-const createError = require("../../helpers");
-const { User, schemas } = require("../../service/schemas/users");
+const { createError, handleJimp } = require("../../helpers");
+const { User } = require("../../service/schemas/users");
 const { SECRET } = process.env;
 
-const avatarPath = path.join(__dirname, process.cwd(), "public", "avatars");
+const avatarPath = path.join(__dirname, "../../", "public", "avatars");
 
 const signup = async (req, res, next) => {
   try {
     const { password, email } = req.body;
     const findEmail = await User.findOne({ email });
-
-    const { error } = schemas.registerJoiSchema.validate(req.body);
-    if (error) {
-      throw createError(400, error.message);
-    }
 
     if (findEmail) {
       throw createError(409, "Email in use");
@@ -43,10 +37,6 @@ const signup = async (req, res, next) => {
 
 const signin = async (req, res, next) => {
   const { email, password } = req.body;
-  const { error } = schemas.registerJoiSchema.validate(req.body);
-  if (error) {
-    throw createError(400, error.message);
-  }
 
   try {
     const user = await User.findOne({ email });
@@ -102,12 +92,6 @@ const changeSubscription = async (req, res, next) => {
     const { userId } = req.params;
     const { subscription } = req.body;
 
-    const { error } = schemas.subscriptionJoiSchema.validate({ subscription });
-
-    if (error) {
-      throw createError(400, error.message);
-    }
-
     if (!req.body) {
       throw createError(400, "missing fields");
     }
@@ -132,31 +116,30 @@ const changeSubscription = async (req, res, next) => {
 const upload = async (req, res, next) => {
   try {
     const { _id: id } = req.user;
-    const { originalName, path: tempPath } = req.file;
-    const [extension] = originalName.split(".").reverse();
+    const { originalname, path: tempPath } = req.file;
 
-    Jimp.read(originalName, (err, originalName) => {
-      if (err) {
-        throw createError(400, "Set dimension 250*250");
-      }
-      originalName.resize(250, 250);
-    });
+    const [extension] = originalname.split(".").reverse();
 
     const fileName = `${id}.${extension}`;
     const resultUpload = path.join(avatarPath, fileName);
+    await handleJimp(tempPath);
+
     await fs.rename(tempPath, resultUpload);
 
     const avatarURL = path.join("avatars", fileName);
-    if (fileName) {
+
+    if (!id) {
       throw createError(401);
     }
-    await User.findByIdAndUpdate({ id, avatarURL });
+
+    await User.findByIdAndUpdate(id, { avatarURL });
     res.status(200).json({ avatarURL });
   } catch (error) {
     await fs.unlink(req.file.path);
     next(error);
   }
 };
+
 module.exports = {
   signup,
   signin,

@@ -26,7 +26,7 @@ const contact = Schema(
   { versionKey: false, timestamps: true }
 );
 
-const changeContactsJoiSchema = Joi.object({
+const contactsJoiSchema = Joi.object({
   name: Joi.string().alphanum().min(3).max(15).required(),
   email: Joi.string().email({
     minDomainSegments: 2,
@@ -39,7 +39,7 @@ const changeValidateJoiSchema = Joi.object({
   favorite: Boolean,
 });
 
-const schemas = { changeContactsJoiSchema, changeValidateJoiSchema };
+const schemas = { contactsJoiSchema, changeValidateJoiSchema };
 
 const Contact = model("contact", contact);
 

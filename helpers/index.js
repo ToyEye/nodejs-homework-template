@@ -1,3 +1,3 @@
 const createError = require("./createErrors");
-
-module.exports = createError;
+const handleJimp = require("./handleJimp");
+module.exports = { createError, handleJimp };

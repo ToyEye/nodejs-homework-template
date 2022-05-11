@@ -1,5 +1,5 @@
-const { Contact, schemas } = require("../../service/schemas/contacts");
-const createError = require("../../helpers/");
+const { Contact } = require("../../service/schemas/contacts");
+const { createError } = require("../../helpers/");
 
 const get = async (req, res, next) => {
   try {
@@ -17,6 +17,7 @@ const get = async (req, res, next) => {
     next(error);
   }
 };
+
 const getById = async (req, res, next) => {
   try {
     const { _id: owner } = req.user;
@@ -34,11 +35,6 @@ const getById = async (req, res, next) => {
 const createContact = async (req, res, next) => {
   try {
     const { _id } = req.user;
-    const { error } = schemas.changeContactsJoiSchema.validate(req.body);
-
-    if (error) {
-      throw createError(400, error.message);
-    }
 
     const newContact = req.body;
     const result = await Contact.create({ ...newContact, owner: _id });
@@ -77,11 +73,6 @@ const updateContact = async (req, res, next) => {
     const { contactId } = req.params;
     const { body } = req;
 
-    const { error } = schemas.changeContactsJoiSchema.validate(req.body);
-    if (error) {
-      throw createError(400, error.message);
-    }
-
     if (!body) {
       throw createError(400, "missing fields");
     }
@@ -110,11 +101,6 @@ const updateFavorite = async (req, res, next) => {
     const { _id: owner } = req.user;
     const { contactId } = req.params;
     const { favorite } = req.body;
-
-    const { error } = schemas.changeValidateJoiSchema.validate({ favorite });
-    if (error) {
-      throw createError(400, error.message);
-    }
 
     if (!req.body) {
       throw createError(400, "missing fields");
