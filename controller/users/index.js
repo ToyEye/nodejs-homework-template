@@ -1,9 +1,15 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const gravatar = require("gravatar");
+const fs = require("fs/promises");
+const path = require("path");
+const Jimp = require("jimp");
 
 const createError = require("../../helpers");
 const { User, schemas } = require("../../service/schemas/users");
 const { SECRET } = process.env;
+
+const avatarPath = path.join(__dirname, process.cwd(), "public", "avatars");
 
 const signup = async (req, res, next) => {
   try {
@@ -19,9 +25,11 @@ const signup = async (req, res, next) => {
       throw createError(409, "Email in use");
     }
 
+    const avatarURL = gravatar.url(email);
     const salt = await bcrypt.genSalt(10);
     const hashPassword = await bcrypt.hash(password, salt);
-    await User.create({ email, password: hashPassword });
+
+    await User.create({ email, password: hashPassword, avatarURL });
 
     res.status(201).json({
       user: {
@@ -121,4 +129,39 @@ const changeSubscription = async (req, res, next) => {
   }
 };
 
-module.exports = { signup, signin, current, logout, changeSubscription };
+const upload = async (req, res, next) => {
+  try {
+    const { _id: id } = req.user;
+    const { originalName, path: tempPath } = req.file;
+    const [extension] = originalName.split(".").reverse();
+
+    Jimp.read(originalName, (err, originalName) => {
+      if (err) {
+        throw createError(400, "Set dimension 250*250");
+      }
+      originalName.resize(250, 250);
+    });
+
+    const fileName = `${id}.${extension}`;
+    const resultUpload = path.join(avatarPath, fileName);
+    await fs.rename(tempPath, resultUpload);
+
+    const avatarURL = path.join("avatars", fileName);
+    if (fileName) {
+      throw createError(401);
+    }
+    await User.findByIdAndUpdate({ id, avatarURL });
+    res.status(200).json({ avatarURL });
+  } catch (error) {
+    await fs.unlink(req.file.path);
+    next(error);
+  }
+};
+module.exports = {
+  signup,
+  signin,
+  current,
+  logout,
+  changeSubscription,
+  upload,
+};
