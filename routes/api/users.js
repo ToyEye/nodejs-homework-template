@@ -16,6 +16,12 @@ router.patch(
   validation(schemas.subscriptionJoiSchema),
   users.changeSubscription
 );
+router.get("/verify/:verificationToken", users.verifyEmail);
+router.post(
+  "/verify",
+  validation(schemas.verifyJoiSchema),
+  users.reverifyEmailToken
+);
 
 router.patch("/avatars", auth, upload.single("avatar"), users.upload);
 
